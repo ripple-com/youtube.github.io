@@ -960,6 +960,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const commentsRef = db.ref("video_comments");
+const viewsRef = db.ref("video_views");
 
 const video = document.getElementById("video");
 const player = document.getElementById("player");
@@ -980,28 +981,24 @@ const spinner = document.getElementById("spinner");
 let controlsTimer;
 
 
-/* REAL TIME LIVE VIEWS COUNTER FUNCTION */
+/* REAL-TIME ACCURATE VIEWS COUNTER (FIREBASE) */
 
-function updateLiveViews() {
-    const namespace = "ripple_com_youtube_github_io";
-    const key = "video_views";
-
-    fetch(`https://api.countapi.xyz/hit/${namespace}/${key}`)
-        .then(res => res.json())
-        .then(data => {
-            if(data && data.value){
-                document.getElementById("viewCount").innerText = data.value.toLocaleString();
-            } else {
-                document.getElementById("viewCount").innerText = "1";
-            }
-        })
-        .catch(() => {
-            document.getElementById("viewCount").innerText = "1,024";
+function initRealtimeViews() {
+    if (!sessionStorage.getItem("page_viewed")) {
+        viewsRef.transaction((currentViews) => {
+            return (currentViews || 0) + 1;
         });
+        sessionStorage.setItem("page_viewed", "true");
+    }
+
+    viewsRef.on("value", (snapshot) => {
+        const views = snapshot.val() || 0;
+        document.getElementById("viewCount").innerText = views.toLocaleString();
+    });
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-    updateLiveViews();
+    initRealtimeViews();
     listenForLiveComments();
 });
 
@@ -1009,43 +1006,30 @@ window.addEventListener("DOMContentLoaded", () => {
 /* PLAY */
 
 function togglePlay(){
-
     if(video.paused){
-
         video.play();
-
     }else{
-
         video.pause();
-
     }
-
 }
 
 
 /* PLAY EVENT */
 
 video.addEventListener("play",()=>{
-
     playBtn.innerHTML="❚❚";
     bigIcon.innerHTML="❚❚";
-
     bigPlay.classList.add("hide");
-
     showControls();
-
 });
 
 
 /* PAUSE */
 
 video.addEventListener("pause",()=>{
-
     playBtn.innerHTML="▶";
     bigIcon.innerHTML="▶";
-
     bigPlay.classList.remove("hide");
-
 });
 
 
@@ -1063,26 +1047,18 @@ video.addEventListener("playing", () => {
 /* TIME UPDATE */
 
 video.addEventListener("timeupdate",()=>{
-
     if(!video.duration) return;
 
-    const percent=
-        (video.currentTime/video.duration)*100;
-
+    const percent=(video.currentTime/video.duration)*100;
     progress.style.width=percent+"%";
 
-    time.innerHTML=
-        formatTime(video.currentTime)
-        +" / "+
-        formatTime(video.duration);
-
+    time.innerHTML=formatTime(video.currentTime)+" / "+formatTime(video.duration);
 });
 
 
 /* FORMAT TIME */
 
 function formatTime(seconds){
-
     if(isNaN(seconds)) return "00:00";
 
     let min=Math.floor(seconds/60);
@@ -1091,273 +1067,176 @@ function formatTime(seconds){
     if(sec<10) sec="0"+sec;
 
     return String(min).padStart(2,"0")+":"+sec;
-
 }
 
 
 /* SEEK */
 
 function seek(e){
-
-    const rect=
-        progressArea.getBoundingClientRect();
-
-    const percent=
-        (e.clientX-rect.left)/rect.width;
-
-    video.currentTime=
-        percent*video.duration;
-
+    const rect=progressArea.getBoundingClientRect();
+    const percent=(e.clientX-rect.left)/rect.width;
+    video.currentTime=percent*video.duration;
 }
 
 
 /* SKIP */
 
 function skip(seconds){
-
     video.currentTime+=seconds;
-
 }
 
 
 /* VOLUME */
 
 volume.addEventListener("input",()=>{
-
     video.volume=volume.value;
-
     video.muted=false;
-
     updateMuteIcon();
-
 });
 
 
 /* MUTE */
 
 function toggleMute(){
-
     video.muted=!video.muted;
-
     updateMuteIcon();
-
 }
 
-
 function updateMuteIcon(){
-
-    muteBtn.innerHTML=
-        video.muted || video.volume===0
-        ? "🔇"
-        : "🔊";
-
+    muteBtn.innerHTML=video.muted || video.volume===0 ? "🔇" : "🔊";
 }
 
 
 /* SPEED */
 
 function changeSpeed(){
-
-    video.playbackRate=
-        Number(speed.value);
-
+    video.playbackRate=Number(speed.value);
 }
 
 
 /* FULLSCREEN */
 
 function toggleFullscreen(){
-
     if(document.fullscreenElement){
-
         document.exitFullscreen();
-
     }else{
-
         if(player.requestFullscreen){
-
             player.requestFullscreen();
-
         }
-
     }
-
 }
 
 
 /* SHARE */
 
 function shareVideo(){
-
     const url=window.location.href;
 
     if(navigator.share){
-
         navigator.share({
-
             title:"How To Register 888Starz 2026",
-
             text:"Watch this video 🎬",
-
             url:url
-
         }).catch(()=>{});
-
     }else{
-
         link.value=url;
-
         modal.classList.add("open");
-
     }
-
 }
 
 
 /* COPY LINK */
 
 async function copyLink(){
-
     try{
-
-        await navigator.clipboard.writeText(
-            link.value
-        );
-
+        await navigator.clipboard.writeText(link.value);
     }catch{
-
         link.select();
-
         document.execCommand("copy");
-
     }
-
     modal.classList.remove("open");
-
     showToast();
-
 }
 
 
 /* TOAST */
 
 function showToast(){
-
     toast.classList.add("show");
-
     setTimeout(()=>{
-
         toast.classList.remove("show");
-
     },2200);
-
 }
 
 
 /* CLOSE MODAL */
 
 function closeModal(){
-
     modal.classList.remove("open");
-
 }
 
 
 /* CONTROLS */
 
 function showControls(){
-
     player.classList.remove("hide-controls");
-
     clearTimeout(controlsTimer);
 
     if(!video.paused){
-
         controlsTimer=setTimeout(()=>{
-
             player.classList.add("hide-controls");
-
         },3000);
-
     }
-
 }
 
-
 player.addEventListener("mousemove",showControls);
-
 player.addEventListener("touchstart",showControls);
 
 
 /* KEYBOARD */
 
 document.addEventListener("keydown",(e)=>{
-
     if(e.target.tagName==="INPUT" || e.target.tagName==="TEXTAREA") return;
 
     if(e.code==="Space"){
-
         e.preventDefault();
-
         togglePlay();
-
     }
-
     if(e.code==="ArrowRight"){
-
         skip(10);
-
     }
-
     if(e.code==="ArrowLeft"){
-
         skip(-10);
-
     }
-
     if(e.code==="KeyM"){
-
         toggleMute();
-
     }
-
     if(e.code==="KeyF"){
-
         toggleFullscreen();
-
     }
-
 });
 
 
 /* DOUBLE CLICK FULLSCREEN */
 
 video.addEventListener("dblclick",()=>{
-
     toggleFullscreen();
-
 });
 
 
 /* RIGHT CLICK DISABLE */
 
 video.addEventListener("contextmenu",(e)=>{
-
     e.preventDefault();
-
 });
 
 
 /* CLOSE MODAL */
 
 modal.addEventListener("click",(e)=>{
-
     if(e.target===modal){
-
         closeModal();
-
     }
-
 });
 
 
