@@ -7,6 +7,10 @@
 
 <title>VEXA • Watch</title>
 
+<!-- Firebase SDKs for Realtime Database -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
 <style>
 *{
     margin:0;
@@ -829,7 +833,6 @@ footer{
 
         <div class="buttons">
 
-            <!-- ⚠️ මෙතැනට ඔයාගේ 888Starz Link එක දාන්න -->
             <a
                 class="btn primary"
                 href="https://YOUR_888STARZ_REGISTER_LINK.com" 
@@ -839,7 +842,6 @@ footer{
 
             </a>
 
-            <!-- ⚠️ මෙතැනට ඔයාගේ Telegram Link එක දාන්න -->
             <a
                 class="btn telegram-btn"
                 href="https://t.me/YOUR_TELEGRAM_CHANNEL" 
@@ -871,7 +873,7 @@ footer{
 
     </section>
 
-    <!-- NATIVE CUSTOM COMMENT SECTION -->
+    <!-- REALTIME ONLINE COMMENTS SECTION -->
 
     <section class="comments-section">
         <div class="comments-header">
@@ -883,12 +885,12 @@ footer{
         <div class="comment-form">
             <input type="text" id="commentName" placeholder="Your Name" class="comment-input" required>
             <textarea id="commentText" placeholder="Write a comment..." class="comment-input comment-textarea" rows="3" required></textarea>
-            <button class="btn primary" style="width: fit-content;" onclick="addComment()">Post Comment</button>
+            <button class="btn primary" style="width: fit-content;" id="postBtn" onclick="addComment()">Post Comment</button>
         </div>
 
         <!-- Comments List -->
         <div class="comments-list" id="commentsList">
-            <!-- New comments will appear here -->
+            <p style="color: var(--muted); font-size: 13px;">Loading comments...</p>
         </div>
     </section>
 
@@ -949,6 +951,16 @@ footer{
 
 <script>
 
+/* FIREBASE FREE REALTIME DATABASE CONFIGURATION */
+const firebaseConfig = {
+    databaseURL: "https://vexa-comments-default-rtdb.firebaseio.com/"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const commentsRef = db.ref("video_comments");
+
 const video = document.getElementById("video");
 const player = document.getElementById("player");
 const bigPlay = document.getElementById("bigPlay");
@@ -990,7 +1002,7 @@ function updateLiveViews() {
 
 window.addEventListener("DOMContentLoaded", () => {
     updateLiveViews();
-    renderComments();
+    listenForLiveComments();
 });
 
 
@@ -1349,41 +1361,45 @@ modal.addEventListener("click",(e)=>{
 });
 
 
-/* CUSTOM COMMENT SYSTEM FUNCTIONS */
+/* FIREBASE REALTIME LIVE COMMENT SYSTEM */
 
-let comments = JSON.parse(localStorage.getItem("vexa_comments")) || [];
+function listenForLiveComments() {
+    commentsRef.on("value", (snapshot) => {
+        const list = document.getElementById("commentsList");
+        const countBadge = document.getElementById("commentCount");
+        list.innerHTML = "";
 
-function renderComments() {
-    const list = document.getElementById("commentsList");
-    const countBadge = document.getElementById("commentCount");
-    list.innerHTML = "";
+        const data = snapshot.val();
+        if (!data) {
+            countBadge.innerText = "0 Comments";
+            list.innerHTML = `<p style="color: var(--muted); font-size: 13px;">No comments yet. Be the first to comment!</p>`;
+            return;
+        }
 
-    countBadge.innerText = `${comments.length} Comments`;
+        const commentsArray = Object.values(data);
+        countBadge.innerText = `${commentsArray.length} Comments`;
 
-    if (comments.length === 0) {
-        list.innerHTML = `<p style="color: var(--muted); font-size: 13px;">No comments yet. Be the first to comment!</p>`;
-        return;
-    }
-
-    comments.slice().reverse().forEach(c => {
-        const firstLetter = c.name.charAt(0).toUpperCase();
-        const card = document.createElement("div");
-        card.className = "comment-card";
-        card.innerHTML = `
-            <div class="comment-avatar">${firstLetter}</div>
-            <div class="comment-content">
-                <div class="comment-author">${escapeHTML(c.name)}</div>
-                <div class="comment-date">${c.date}</div>
-                <div class="comment-body">${escapeHTML(c.text)}</div>
-            </div>
-        `;
-        list.appendChild(card);
+        commentsArray.reverse().forEach(c => {
+            const firstLetter = (c.name || "A").charAt(0).toUpperCase();
+            const card = document.createElement("div");
+            card.className = "comment-card";
+            card.innerHTML = `
+                <div class="comment-avatar">${firstLetter}</div>
+                <div class="comment-content">
+                    <div class="comment-author">${escapeHTML(c.name)}</div>
+                    <div class="comment-date">${c.date}</div>
+                    <div class="comment-body">${escapeHTML(c.text)}</div>
+                </div>
+            `;
+            list.appendChild(card);
+        });
     });
 }
 
 function addComment() {
     const nameInput = document.getElementById("commentName");
     const textInput = document.getElementById("commentText");
+    const postBtn = document.getElementById("postBtn");
 
     const name = nameInput.value.trim();
     const text = textInput.value.trim();
@@ -1393,19 +1409,26 @@ function addComment() {
         return;
     }
 
+    postBtn.disabled = true;
+    postBtn.innerText = "Posting...";
+
     const newComment = {
         name: name,
         text: text,
         date: new Date().toLocaleString()
     };
 
-    comments.push(newComment);
-    localStorage.setItem("vexa_comments", JSON.stringify(comments));
+    commentsRef.push(newComment, (error) => {
+        postBtn.disabled = false;
+        postBtn.innerText = "Post Comment";
 
-    nameInput.value = "";
-    textInput.value = "";
-
-    renderComments();
+        if (error) {
+            alert("Failed to post comment. Try again.");
+        } else {
+            nameInput.value = "";
+            textInput.value = "";
+        }
+    });
 }
 
 function escapeHTML(str) {
