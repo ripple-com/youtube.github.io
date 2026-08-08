@@ -342,7 +342,7 @@ h1{
     background:#229ED9;
 }
 
-/* ================= IMPROVED COMMENTS STYLING ================= */
+/* ================= NATIVE CUSTOM COMMENTS STYLING ================= */
 
 .comments-section {
     margin-top: 25px;
@@ -390,6 +390,88 @@ h1{
     background: rgba(118, 87, 255, 0.18);
     color: #b9acff;
     border: 1px solid rgba(118, 87, 255, 0.3);
+}
+
+.comment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 25px;
+}
+
+.comment-input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+    transition: 0.3s;
+    font-family: inherit;
+}
+
+.comment-input:focus {
+    border-color: var(--accent);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.comment-textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.comment-card {
+    padding: 15px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    display: flex;
+    gap: 12px;
+}
+
+.comment-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.comment-content {
+    flex: 1;
+}
+
+.comment-author {
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 2px;
+}
+
+.comment-date {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+}
+
+.comment-body {
+    font-size: 13.5px;
+    color: #ddd;
+    line-height: 1.5;
+    word-break: break-word;
 }
 
 /* ================= SHARE MODAL ================= */
@@ -789,30 +871,24 @@ footer{
 
     </section>
 
-    <!-- STYLED COMMENTS SECTION WITH TRANSPARENT DARK THEME -->
+    <!-- NATIVE CUSTOM COMMENT SECTION -->
 
     <section class="comments-section">
         <div class="comments-header">
             <h3>💬 Community Discussions</h3>
-            <span class="comments-badge">LIVE</span>
+            <span class="comments-badge" id="commentCount">0 Comments</span>
         </div>
         
-        <div id="giscus-container">
-            <script src="https://giscus.app/client.js"
-                    data-repo="ripple-com/youtube.github.io"
-                    data-repo-id="R_kgDOTyLGZQ"
-                    data-category="General"
-                    data-category-id="DIC_kwDOTyLGZc4DC8BJ"
-                    data-mapping="pathname"
-                    data-strict="0"
-                    data-reactions-enabled="1"
-                    data-emit-metadata="0"
-                    data-input-position="bottom"
-                    data-theme="transparent_dark"
-                    data-lang="en"
-                    crossorigin="anonymous"
-                    async>
-            </script>
+        <!-- Comment Form -->
+        <div class="comment-form">
+            <input type="text" id="commentName" placeholder="Your Name" class="comment-input" required>
+            <textarea id="commentText" placeholder="Write a comment..." class="comment-input comment-textarea" rows="3" required></textarea>
+            <button class="btn primary" style="width: fit-content;" onclick="addComment()">Post Comment</button>
+        </div>
+
+        <!-- Comments List -->
+        <div class="comments-list" id="commentsList">
+            <!-- New comments will appear here -->
         </div>
     </section>
 
@@ -912,7 +988,10 @@ function updateLiveViews() {
         });
 }
 
-window.addEventListener("DOMContentLoaded", updateLiveViews);
+window.addEventListener("DOMContentLoaded", () => {
+    updateLiveViews();
+    renderComments();
+});
 
 
 /* PLAY */
@@ -1202,7 +1281,7 @@ player.addEventListener("touchstart",showControls);
 
 document.addEventListener("keydown",(e)=>{
 
-    if(e.target.tagName==="INPUT") return;
+    if(e.target.tagName==="INPUT" || e.target.tagName==="TEXTAREA") return;
 
     if(e.code==="Space"){
 
@@ -1268,6 +1347,72 @@ modal.addEventListener("click",(e)=>{
     }
 
 });
+
+
+/* CUSTOM COMMENT SYSTEM FUNCTIONS */
+
+let comments = JSON.parse(localStorage.getItem("vexa_comments")) || [];
+
+function renderComments() {
+    const list = document.getElementById("commentsList");
+    const countBadge = document.getElementById("commentCount");
+    list.innerHTML = "";
+
+    countBadge.innerText = `${comments.length} Comments`;
+
+    if (comments.length === 0) {
+        list.innerHTML = `<p style="color: var(--muted); font-size: 13px;">No comments yet. Be the first to comment!</p>`;
+        return;
+    }
+
+    comments.slice().reverse().forEach(c => {
+        const firstLetter = c.name.charAt(0).toUpperCase();
+        const card = document.createElement("div");
+        card.className = "comment-card";
+        card.innerHTML = `
+            <div class="comment-avatar">${firstLetter}</div>
+            <div class="comment-content">
+                <div class="comment-author">${escapeHTML(c.name)}</div>
+                <div class="comment-date">${c.date}</div>
+                <div class="comment-body">${escapeHTML(c.text)}</div>
+            </div>
+        `;
+        list.appendChild(card);
+    });
+}
+
+function addComment() {
+    const nameInput = document.getElementById("commentName");
+    const textInput = document.getElementById("commentText");
+
+    const name = nameInput.value.trim();
+    const text = textInput.value.trim();
+
+    if (!name || !text) {
+        alert("Please enter your name and comment.");
+        return;
+    }
+
+    const newComment = {
+        name: name,
+        text: text,
+        date: new Date().toLocaleString()
+    };
+
+    comments.push(newComment);
+    localStorage.setItem("vexa_comments", JSON.stringify(comments));
+
+    nameInput.value = "";
+    textInput.value = "";
+
+    renderComments();
+}
+
+function escapeHTML(str) {
+    return str.replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+    );
+}
 
 </script>
 
