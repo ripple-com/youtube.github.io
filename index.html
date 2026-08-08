@@ -116,6 +116,23 @@ header{
     background:#000;
 }
 
+/* Fullscreen Display & Rotation Fixes */
+.player:fullscreen, .player:-webkit-full-screen {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+}
+
+.player:fullscreen video, .player:-webkit-full-screen video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
 /* Big Play */
 
 .big-play{
@@ -192,6 +209,7 @@ header{
             rgba(0,0,0,.9)
         );
     transition:.3s;
+    z-index: 20;
 }
 
 .player.hide-controls .controls{
@@ -344,6 +362,66 @@ h1{
 .telegram-btn{
     border:0;
     background:#229ED9;
+}
+
+/* ================= PROMO CODE BOX ================= */
+
+.promo-box {
+    margin-top: 18px;
+    padding: 14px 18px;
+    border-radius: 14px;
+    background: rgba(118, 87, 255, 0.08);
+    border: 1px dashed rgba(118, 87, 255, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.promo-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.promo-title {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.promo-code {
+    font-size: 18px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 1.5px;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.promo-copy-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 0;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.25s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.promo-copy-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(118, 87, 255, 0.4);
 }
 
 /* ================= NATIVE CUSTOM COMMENTS STYLING ================= */
@@ -631,6 +709,16 @@ footer{
     .btn{
         width:100%;
     }
+
+    .promo-box {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .promo-copy-btn {
+        width: 100%;
+        justify-content: center;
+    }
 }
 </style>
 </head>
@@ -671,7 +759,7 @@ footer{
 
         <video id="video" preload="metadata" playsinline crossorigin="anonymous">
 
-            <source src="https://res.cloudinary.com/e5ggut4j/video/upload/InShot_20260805_221128627_bx7wey.mp4" type="video/mp4">
+            <source src="https://res.cloudinary.com/e5ggut4j/video/upload/InShot_20260808_213446259_yuuwlw.mp4" type="video/mp4">
 
             Your browser does not support video playback.
 
@@ -835,7 +923,7 @@ footer{
 
             <a
                 class="btn primary"
-                href="https://YOUR_888STARZ_REGISTER_LINK.com" 
+                href="https://888starz.bet" 
                 target="_blank">
 
                 🎰 888Starz Register Link
@@ -844,7 +932,7 @@ footer{
 
             <a
                 class="btn telegram-btn"
-                href="https://t.me/YOUR_TELEGRAM_CHANNEL" 
+                href="https://t.me/suwahas_sathsara_servic" 
                 target="_blank">
 
                 ✈️ Telegram Join
@@ -869,6 +957,17 @@ footer{
 
             </button>
 
+        </div>
+
+        <!-- PROMO CODE BOX -->
+        <div class="promo-box">
+            <div class="promo-info">
+                <span class="promo-title">🎁 Bonus Promo Code:</span>
+                <span class="promo-code" id="promoCodeText">LKR99</span>
+            </div>
+            <button class="promo-copy-btn" onclick="copyPromoCode()">
+                📋 Copy Code
+            </button>
         </div>
 
     </section>
@@ -1114,15 +1213,41 @@ function changeSpeed(){
 }
 
 
-/* FULLSCREEN */
+/* FULLSCREEN WITH AUTOMATIC ROTATION FOR MOBILE */
 
-function toggleFullscreen(){
-    if(document.fullscreenElement){
-        document.exitFullscreen();
-    }else{
-        if(player.requestFullscreen){
-            player.requestFullscreen();
+async function toggleFullscreen(){
+    try {
+        if(!document.fullscreenElement && !document.webkitFullscreenElement){
+            // 1. Enter Fullscreen
+            if(player.requestFullscreen){
+                await player.requestFullscreen();
+            } else if(player.webkitRequestFullscreen){
+                await player.webkitRequestFullscreen();
+            } else if(video.webkitEnterFullscreen){ /* Safari / iOS */
+                video.webkitEnterFullscreen();
+                return;
+            }
+
+            // 2. Lock Orientation to Landscape (Mobile Phones)
+            if(screen.orientation && screen.orientation.lock){
+                await screen.orientation.lock("landscape").catch((err) => {
+                    console.log("Orientation lock not supported: ", err);
+                });
+            }
+        } else {
+            // Exit Fullscreen & Unlock Orientation
+            if(document.exitFullscreen){
+                await document.exitFullscreen();
+            } else if(document.webkitExitFullscreen){
+                await document.webkitExitFullscreen();
+            }
+
+            if(screen.orientation && screen.orientation.unlock){
+                screen.orientation.unlock();
+            }
         }
+    } catch(e) {
+        console.error("Fullscreen/Orientation Error: ", e);
     }
 }
 
@@ -1155,13 +1280,32 @@ async function copyLink(){
         document.execCommand("copy");
     }
     modal.classList.remove("open");
-    showToast();
+    showToast("Link copied successfully 🔗");
+}
+
+
+/* COPY PROMO CODE */
+
+async function copyPromoCode(){
+    const code = document.getElementById("promoCodeText").innerText;
+    try{
+        await navigator.clipboard.writeText(code);
+    }catch{
+        const input = document.createElement("input");
+        input.value = code;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        document.body.removeChild(input);
+    }
+    showToast("Promo Code 'LKR99' Copied! 🎁");
 }
 
 
 /* TOAST */
 
-function showToast(){
+function showToast(message = "Link copied successfully 🔗"){
+    toast.innerText = message;
     toast.classList.add("show");
     setTimeout(()=>{
         toast.classList.remove("show");
