@@ -953,7 +953,7 @@ footer{
 
 /* FIREBASE FREE REALTIME DATABASE CONFIGURATION */
 const firebaseConfig = {
-    databaseURL: "https://vexa-comments-default-rtdb.firebaseio.com/"
+    databaseURL: "https://suwahassathsarachandrasi-bf982-default-rtdb.firebaseio.com/"
 };
 
 // Initialize Firebase
@@ -1393,6 +1393,9 @@ function listenForLiveComments() {
             `;
             list.appendChild(card);
         });
+    }, (error) => {
+        console.error("Firebase error:", error);
+        document.getElementById("commentsList").innerHTML = `<p style="color: red; font-size: 13px;">Permission denied! Please update Firebase Database Rules.</p>`;
     });
 }
 
@@ -1423,7 +1426,7 @@ function addComment() {
         postBtn.innerText = "Post Comment";
 
         if (error) {
-            alert("Failed to post comment. Try again.");
+            alert("Failed to post comment. Check Firebase rules.");
         } else {
             nameInput.value = "";
             textInput.value = "";
